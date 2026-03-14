@@ -4,13 +4,18 @@
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
+  color: rgba(0, 0, 0, 0.87);
   background-color: #242424;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: #bfbfbf;
+  color: #fff;
 }
 
 body {
@@ -32,23 +37,44 @@ p {
   font-size: 1.25rem;
   font-weight: 500;
   flex-grow: 1;
+  --webkit-line-clamp: 1;
+  --webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 340px;
+  max-width: 400px;
+}
+
+.btn-primary {
+  /* background-color: #747bff;
+  border-color: #747bff; */
+  width: auto;
+}
+
+.form-control {
+  /* background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 4px; */
+  max-width: 400px;
 }
 
 #app {
-  /* max-width: 1280px; */
+  max-width: 1280px;
   /* margin: 0 auto; */
-  text-align: start;
+  /* text-align: start; */
   display: flex;
   flex-direction: column;
-  align-content: flex-start;
+  /* align-content: flex-start; */
   gap: 2rem;
 }
 
-/* .container {
+.cue-container {
   display: flex;
   flex-direction: row;
-  gap: 2rem;
-} */
+  align-items: center;
+  gap: 0.5rem;
+}
 
 .search-wrapper {
   display: flex;
@@ -63,7 +89,7 @@ p {
   flex-direction: column;
   flex-wrap: wrap;
   align-items: stretch;
-  /* justify-content: flex-start; */
+  max-width: 1280px;
   gap: 2rem;
   width: 100%;
   /* flex: 0 1 360px; */
@@ -79,9 +105,29 @@ p {
   gap: 2rem;
   width: 100%;
   padding: 1rem;
+  cursor: grab;
 }
 
-@media (prefers-color-scheme: light) {
+.gallery-item:hover {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  align-content: center;
+  justify-content: flex-start;
+  gap: 2rem;
+  width: 100%;
+  padding: 1rem;
+  cursor: grab;
+  background-color: aliceblue;
+  border-radius: 5px;
+}
+
+.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+/* @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;
@@ -92,4 +138,4 @@ p {
   button {
     background-color: #f9f9f9;
   }
-}
+} */

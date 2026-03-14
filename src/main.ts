@@ -3,6 +3,7 @@ import CueOptions from "./cue-options.json";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "./style.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 //Song types:
 type Song = {
@@ -12,6 +13,7 @@ type Song = {
   createdAt?: Date;
   cueIn?: string | null;
   cueOut?: string | null;
+  notes?: string;
 };
 
 type CueOption = {
@@ -23,6 +25,8 @@ type DropDownOptions = {
   cueInSelect: HTMLSelectElement;
   cueOutSelect: HTMLSelectElement;
 };
+
+let draggedCard: HTMLDivElement | null = null;
 
 // Initialise DOM elements
 const gallery = document.getElementById("gallery") as HTMLDivElement;
@@ -44,14 +48,17 @@ form?.addEventListener("submit", (e) => {
     id: uuidV4(),
     title: searchInput.value,
     // completed: false,
-    // createdAt: new Date(),
+    createdAt: new Date(),
     cueIn: null,
     cueOut: null,
   };
-  songs.push(newSong);
+  // Use .push to add the new song to the end of the songs array instead of unshift which adds it to the beginning:
+  // songs.push(newSong);
+  songs.unshift(newSong);
   saveSongs();
 
   addSong(newSong);
+  gallery.prepend(gallery.lastElementChild as HTMLDivElement);
   searchInput.value = "";
 });
 
@@ -63,6 +70,31 @@ function addSong(song: Song) {
   galleryItem.classList.add("gallery-item");
   const title = document.createElement("p");
   title.textContent = song.title;
+  // title.style.minWidth = "400px";
+  card.dataset.id = song.id; // Store the song id in a data attribute on the card element for easy access when deleting
+  card.draggable = true;
+
+  const textArea = document.createElement("textarea");
+  textArea.classList.add("form-control", "form-control-sm");
+  textArea.placeholder = "Notes...";
+  textArea.id = `notes-${song.id}`;
+  textArea.value = song.notes || "";
+  // textArea.style.minWidth = "200px";
+  // textArea.style.maxWidth = "400px";
+  textArea.style.width = "100%";
+  textArea.style.height = "40px";
+  // textArea.style.resize = "none";
+  textArea.style.fontSize = "1rem";
+
+  const cueContainer = document.createElement("div");
+  cueContainer.classList.add("cue-container");
+
+  const rightArrow = document.createElement("i");
+  // rightArrow.classList.add("bi", "bi-arrow-right");
+  // rightArrow.innerHTML = `<i class="bi bi-arrow-right-short"></i>`;
+  rightArrow.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-arrow-right-short" viewBox="0 0 16 16">
+  <path fill-rule="evenodd" d="M4 8a.5.5 0 0 1 .5-.5h5.793L8.146 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 8.5H4.5A.5.5 0 0 1 4 8"/>
+</svg>`;
 
   const cueInSelect = createDropdownOptions().cueInSelect;
   const cueOutSelect = createDropdownOptions().cueOutSelect;
@@ -73,9 +105,39 @@ function addSong(song: Song) {
   // const label = document.createElement("label");
   const deleteButton = document.createElement("button");
   deleteButton.classList.add("btn", "btn-danger", "btn-sm", "float-end");
-  deleteButton.textContent = "Delete";
+  // deleteButton.textContent = "Delete";
+  deleteButton.id = "delete-button-" + song.id;
+  deleteButton.innerHTML = '<i class="bi bi-trash"></i>';
+  deleteButton.style.width = "32px";
+  deleteButton.style.height = "32px";
+
+  if (song.cueIn) {
+    cueInSelect.value = song.cueIn;
+    updateSelectColor(cueInSelect);
+  }
+  if (song.cueOut) {
+    cueOutSelect.value = song.cueOut;
+    updateSelectColor(cueOutSelect);
+  }
+
+  cueInSelect.addEventListener("change", () => {
+    song.cueIn = cueInSelect.value;
+    saveSongs();
+    updateSelectColor(cueInSelect);
+  });
+
+  cueOutSelect.addEventListener("change", () => {
+    song.cueOut = cueOutSelect.value;
+    saveSongs();
+    updateSelectColor(cueOutSelect);
+  });
 
   deleteButton.addEventListener("click", () => removeSong(song.id, card));
+
+  textArea.addEventListener("input", () => {
+    song.notes = textArea.value;
+    saveSongs();
+  });
 
   // deleteButton.addEventListener("click", () => {
   //   const index = songs.findIndex((s) => s.id === song.id);
@@ -94,9 +156,58 @@ function addSong(song: Song) {
   // checkbox.type = "checkbox";
   // checkbox.checked = song.completed;
 
-  galleryItem.append(title, cueInSelect, cueOutSelect, deleteButton);
+  card.addEventListener("dragstart", () => {
+    draggedCard = card;
+    card.classList.add("dragging");
+  });
+
+  card.addEventListener("dragend", () => {
+    draggedCard = null;
+    card.classList.remove("dragging");
+  });
+
+  card.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    if (!draggedCard) return;
+
+    const rect = card.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    if (e.clientY < midpoint) {
+      gallery.insertBefore(draggedCard, card);
+    } else {
+      gallery.insertBefore(draggedCard, card.nextSibling);
+    }
+  });
+
+  card.addEventListener("drop", () => {
+    syncSongsWithDOM();
+  });
+
+  cueContainer.append(cueInSelect, rightArrow, cueOutSelect);
+
+  galleryItem.append(
+    title,
+    cueContainer,
+    textArea,
+    deleteButton,
+    // cueOutSelect,
+    // textArea,
+    // deleteButton,
+  );
   card.appendChild(galleryItem);
   gallery.appendChild(card);
+  // Use prepend to add the new card to the beginning of the gallery instead of the end:
+  // gallery.prepend(card);
+}
+
+function syncSongsWithDOM() {
+  const cards = Array.from(gallery.children) as HTMLDivElement[];
+  const reordered = cards
+    .map((c) => songs.find((s) => s.id === c.dataset.id))
+    .filter((s): s is Song => s !== undefined);
+  songs.length = 0;
+  songs.push(...reordered);
+  saveSongs();
 }
 
 // function removeListItem(id: string) {
@@ -138,11 +249,32 @@ function loadSongs(): Song[] {
 // Dynamically create dropdown options for cue in and cue out based on the CueOptions array in cue-options.json
 function createDropdownOptions(): DropDownOptions {
   const cueInSelect = document.createElement("select");
-  cueInSelect.style.maxWidth = "80px";
-  cueInSelect.classList.add("form-select", "form-select-sm");
+  cueInSelect.style.width = "100px";
+  cueInSelect.style.maxWidth = "120px";
+  cueInSelect.classList.add("form-select", "form-select-md");
+  cueInSelect.style.fontWeight = "bold";
+  cueInSelect.style.height = "40px";
+
   const cueOutSelect = document.createElement("select");
-  cueOutSelect.style.maxWidth = "80px";
-  cueOutSelect.classList.add("form-select", "form-select-sm");
+  cueOutSelect.style.width = "100px";
+  cueOutSelect.style.maxWidth = "120px";
+  cueOutSelect.classList.add("form-select", "form-select-md");
+  cueOutSelect.style.fontWeight = "bold";
+  cueOutSelect.style.height = "40px";
+
+  const cueInPlaceholderText = document.createElement("option");
+  cueInPlaceholderText.value = "";
+  cueInPlaceholderText.textContent = "IN";
+  // cueInPlaceholderText.disabled = true;
+  cueInPlaceholderText.selected = true;
+  cueInSelect.appendChild(cueInPlaceholderText);
+
+  const cueOutPlaceholderText = document.createElement("option");
+  cueOutPlaceholderText.value = "";
+  cueOutPlaceholderText.textContent = "OUT";
+  // cueOutPlaceholderText.disabled = true;
+  cueOutPlaceholderText.selected = true;
+  cueOutSelect.appendChild(cueOutPlaceholderText);
 
   CueOptions.forEach((option: CueOption) => {
     const { name, color } = option;
@@ -162,6 +294,22 @@ function createDropdownOptions(): DropDownOptions {
   });
 
   return { cueInSelect, cueOutSelect };
+}
+
+// Helper function to update the background colour of selected value
+function updateSelectColor(select: HTMLSelectElement) {
+  if (select.value === "") {
+    select.style.backgroundColor = "";
+    select.style.color = "";
+    return;
+  }
+  const match = (CueOptions as CueOption[]).find(
+    (option) => option.name === select.value,
+  );
+  if (match) {
+    select.style.backgroundColor = `#${match.color}`;
+    select.style.color = "#fff";
+  }
 }
 
 // function createDropdownOptions() {

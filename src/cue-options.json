@@ -30,5 +30,13 @@
   {
     "name": "H",
     "color": "C3AF04"
+  },
+  {
+    "name": "MEM",
+    "color": "CD1C18"
+  },
+  {
+    "name": "OUTRO",
+    "color": "000000"
   }
 ]
