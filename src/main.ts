@@ -15,16 +15,22 @@ type Song = {
   cueIn?: string | null;
   cueOut?: string | null;
   notes?: string;
+  effectStart?: string;
+  effectEnd?: string;
+  effectType?: string;
 };
 
 type CueOption = {
   name: string;
-  color: string;
+  color?: string;
 };
 
 type DropDownOptions = {
   cueInSelect: HTMLSelectElement;
   cueOutSelect: HTMLSelectElement;
+  effectStartSelect: HTMLSelectElement;
+  effectEndSelect: HTMLSelectElement;
+  effectTypeSelect: HTMLSelectElement;
 };
 
 let draggedCard: HTMLDivElement | null = null;
@@ -138,7 +144,6 @@ form?.addEventListener("submit", (e) => {
   //  songs.unshift(newSong);
 
   saveSongs();
-
   addSong(newSong);
 
   // Use prepend to add the new card to the beginning of the gallery instead of the end:
@@ -196,19 +201,22 @@ function addSong(song: Song) {
   textArea.placeholder = "Notes...";
   textArea.id = `notes-${song.id}`;
   textArea.value = song.notes || "";
-  // textArea.style.minWidth = "200px";
-  // textArea.style.maxWidth = "400px";
   textArea.style.width = "100%";
   textArea.style.height = "40px";
-  // textArea.style.resize = "none";
   textArea.style.fontSize = "1rem";
   textArea.style.flexBasis = "100%";
+  textArea.style.flex = "1 1 auto";
+  // textArea.style.resize = "none";
 
   const innerWrapper = document.createElement("div");
   innerWrapper.classList.add("inner-wrapper");
 
   const cueContainer = document.createElement("div");
   cueContainer.classList.add("cue-container");
+
+  const transitionContainer = document.createElement("div");
+  transitionContainer.classList.add("cue-container");
+  transitionContainer.style.flexShrink = "0";
 
   const metadataContainer = document.createElement("div");
   metadataContainer.classList.add("text-wrapper");
@@ -223,10 +231,27 @@ function addSong(song: Song) {
   <path fill-rule="evenodd" d="M4 8a.5.5 0 0 1 .5-.5h5.793L8.146 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 8.5H4.5A.5.5 0 0 1 4 8"/>
 </svg>`;
 
-  const cueInSelect = createDropdownOptions().cueInSelect;
-  const cueOutSelect = createDropdownOptions().cueOutSelect;
+  const bottomRow = document.createElement("div");
+  bottomRow.style.display = "flex";
+  bottomRow.style.gap = "1.5rem";
+  bottomRow.style.alignItems = "flex-start";
+  bottomRow.style.width = "100%";
+
+  // Without destructuring:
+  // const cueInSelect = createDropdownOptions().cueInSelect;
+  // const cueOutSelect = createDropdownOptions().cueOutSelect;
+  // const effectStart = createDropdownOptions().effectStart;
+  // const effectEnd = createDropdownOptions().effectEnd;
+
+  // Take the outputs from createDropdownOptions and assign them to variables with the same names as the keys in the returned object using destructuring assignment:
   // With destructuring:
-  // const { cueInSelect, cueOutSelect } = createDropdownOptions();
+  const {
+    cueInSelect,
+    cueOutSelect,
+    effectStartSelect,
+    effectEndSelect,
+    effectTypeSelect,
+  } = createDropdownOptions();
 
   // const item = document.createElement("div");
   // const label = document.createElement("label");
@@ -320,6 +345,8 @@ function addSong(song: Song) {
   reorderContainer.append(upButton, downButton);
   metadataContainer.append(reorderContainer);
 
+  // Event listeners to move cards, update cue points, delete songs, and dragn-and-drop reording
+
   upButton.addEventListener("click", () => {
     const prev = card.previousElementSibling as HTMLDivElement | null;
     if (prev) {
@@ -347,6 +374,10 @@ function addSong(song: Song) {
     updateSelectColor(cueOutSelect);
   }
 
+  if (song.effectStart) effectStartSelect.value = song.effectStart;
+  if (song.effectEnd) effectEndSelect.value = song.effectEnd;
+  if (song.effectType) effectTypeSelect.value = song.effectType;
+
   cueInSelect.addEventListener("change", () => {
     song.cueIn = cueInSelect.value;
     saveSongs();
@@ -357,6 +388,21 @@ function addSong(song: Song) {
     song.cueOut = cueOutSelect.value;
     saveSongs();
     updateSelectColor(cueOutSelect);
+  });
+
+  effectStartSelect.addEventListener("change", () => {
+    song.effectStart = effectStartSelect.value;
+    saveSongs();
+  });
+
+  effectEndSelect.addEventListener("change", () => {
+    song.effectEnd = effectEndSelect.value;
+    saveSongs();
+  });
+
+  effectTypeSelect.addEventListener("change", () => {
+    song.effectType = effectTypeSelect.value;
+    saveSongs();
   });
 
   deleteButton.addEventListener("click", () => removeSong(song.id, card));
@@ -410,14 +456,39 @@ function addSong(song: Song) {
     syncSongsWithDOM();
   });
 
+  const atSpan = document.createElement("span");
+  atSpan.textContent = "At";
+  atSpan.style.alignSelf = "center";
+  atSpan.style.fontWeight = "bold";
+
+  const toSpan = document.createElement("span");
+  toSpan.textContent = "to";
+  toSpan.style.alignSelf = "center";
+  toSpan.style.fontWeight = "bold";
+
+  const divider = document.createElement("hr");
+  divider.style.margin = "0";
+  divider.style.width = "100%";
+
   metadataContainer.append(title, artist);
   cueContainer.append(cueInSelect, rightArrow, cueOutSelect);
-  innerWrapper.append(cueContainer);
+  if (effectStartSelect && effectTypeSelect && effectEndSelect) {
+    transitionContainer.append(
+      atSpan,
+      effectStartSelect,
+      effectTypeSelect,
+      toSpan,
+      effectEndSelect,
+    );
+  }
+  bottomRow.append(transitionContainer);
+  innerWrapper.append(cueContainer, textArea);
   actionsContainer.append(editButton, reorderContainer, deleteButton);
   galleryItem.append(
     metadataContainer,
     innerWrapper,
-    textArea,
+    divider,
+    bottomRow,
     actionsContainer,
   );
   card.appendChild(galleryItem);
@@ -483,15 +554,15 @@ function loadSongs(): Song[] {
 // Dynamically create dropdown options for cue in and cue out based on the CueOptions array in cue-options.json
 function createDropdownOptions(): DropDownOptions {
   const cueInSelect = document.createElement("select");
-  cueInSelect.style.width = "100px";
-  cueInSelect.style.maxWidth = "120px";
+  cueInSelect.style.width = "80px";
+  cueInSelect.style.maxWidth = "104px";
   cueInSelect.classList.add("form-select", "form-select-md");
   cueInSelect.style.fontWeight = "bold";
   cueInSelect.style.height = "40px";
 
   const cueOutSelect = document.createElement("select");
-  cueOutSelect.style.width = "100px";
-  cueOutSelect.style.maxWidth = "120px";
+  cueOutSelect.style.width = "80px";
+  cueOutSelect.style.maxWidth = "104px";
   cueOutSelect.classList.add("form-select", "form-select-md");
   cueOutSelect.style.fontWeight = "bold";
   cueOutSelect.style.height = "40px";
@@ -508,24 +579,87 @@ function createDropdownOptions(): DropDownOptions {
   cueOutPlaceholderText.selected = true;
   cueOutSelect.appendChild(cueOutPlaceholderText);
 
+  const effectStart = document.createElement("select");
+  effectStart.classList.add("form-select", "form-select-md");
+  effectStart.style.width = "120px";
+  effectStart.style.fontWeight = "bold";
+  effectStart.style.height = "40px";
+
+  const effectEnd = document.createElement("select");
+  effectEnd.classList.add("form-select", "form-select-md");
+  effectEnd.style.width = "120px";
+  effectEnd.style.fontWeight = "bold";
+  effectEnd.style.height = "40px";
+
+  const effectStartPlaceholderText = document.createElement("option");
+  effectStartPlaceholderText.value = "";
+  effectStartPlaceholderText.textContent = "START";
+  effectStartPlaceholderText.selected = true;
+  effectStart.appendChild(effectStartPlaceholderText);
+
+  const effectEndPlaceholderText = document.createElement("option");
+  effectEndPlaceholderText.value = "";
+  effectEndPlaceholderText.textContent = "END";
+  effectEndPlaceholderText.selected = true;
+  effectEnd.appendChild(effectEndPlaceholderText);
+
+  const effectType = document.createElement("select");
+  effectType.classList.add("form-select", "form-select-md");
+  effectType.style.width = "160px";
+  effectType.style.fontWeight = "bold";
+  effectType.style.height = "40px";
+
+  // Iterate over each option and create an option element for both cue in and cue out selects
   CueOptions.forEach((option: CueOption) => {
     const { name, color } = option;
 
     const inOpt = document.createElement("option");
     inOpt.value = name;
     inOpt.textContent = name;
-    inOpt.style.backgroundColor = color;
+    if (color) {
+      inOpt.style.backgroundColor = color;
+    }
 
     const outOpt = document.createElement("option");
     outOpt.value = name;
     outOpt.textContent = name;
-    outOpt.style.backgroundColor = color;
+    if (color) {
+      outOpt.style.backgroundColor = color;
+    }
 
     cueInSelect.appendChild(inOpt);
     cueOutSelect.appendChild(outOpt);
   });
 
-  return { cueInSelect, cueOutSelect };
+  // Iterate over each options and add custom ones for effects
+  const cueOptionsModified = [...CueOptions, { name: "Transition" }];
+  cueOptionsModified.forEach((option: CueOption) => {
+    const effectOptStart = document.createElement("option");
+    effectOptStart.value = option.name;
+    effectOptStart.textContent = option.name;
+    effectStart.appendChild(effectOptStart);
+
+    const effectOptEnd = document.createElement("option");
+    effectOptEnd.value = option.name;
+    effectOptEnd.textContent = option.name;
+    effectEnd.appendChild(effectOptEnd);
+  });
+
+  const effectTypes = ["Transition", "Skip to", "Vocals only", "Remove vocals"];
+  effectTypes.forEach((type) => {
+    const opt = document.createElement("option");
+    opt.value = type;
+    opt.textContent = type;
+    effectType.appendChild(opt);
+  });
+
+  return {
+    cueInSelect,
+    cueOutSelect,
+    effectStartSelect: effectStart,
+    effectEndSelect: effectEnd,
+    effectTypeSelect: effectType,
+  };
 }
 
 // Helper function to update the background colour of selected value
