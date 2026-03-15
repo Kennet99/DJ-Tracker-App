@@ -1,5 +1,6 @@
 import { v4 as uuidV4 } from "uuid";
 import CueOptions from "./cue-options.json";
+import * as bootstrap from "bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "./style.css";
@@ -37,6 +38,36 @@ const BPMInput = document.getElementById("BPM-input") as HTMLInputElement;
 const addSongButton = document.getElementById(
   "add-song-button",
 ) as HTMLButtonElement;
+const editModal = new bootstrap.Modal(
+  document.getElementById("edit-song-modal") as HTMLElement,
+);
+const editSongInput = document.getElementById(
+  "edit-song-input",
+) as HTMLInputElement;
+const editArtistInput = document.getElementById(
+  "edit-artist-input",
+) as HTMLInputElement;
+const editBPMInput = document.getElementById(
+  "edit-bpm-input",
+) as HTMLInputElement;
+const saveChangesButton = document.getElementById(
+  "edit-save-button",
+) as HTMLButtonElement;
+
+// Function to reorder songs in the gallery with up and down buttons
+function updateAllReorderButtons() {
+  const cards = Array.from(gallery.children) as HTMLDivElement[];
+  cards.forEach((card) => {
+    const upButton = card.querySelector(".btn-reorder-up") as HTMLButtonElement;
+    const downButton = card.querySelector(
+      ".btn-reorder-down",
+    ) as HTMLButtonElement;
+    const isFirst = card === cards[0];
+    const isLast = card === cards[cards.length - 1];
+    if (upButton) upButton.disabled = isFirst;
+    if (downButton) downButton.disabled = isLast;
+  });
+}
 
 // Helper function to update the disabled state of the add song button based on whether all input fields have valid values
 function updateButtonState() {
@@ -66,6 +97,7 @@ updateButtonState();
 // Initialise empty song array and load songs from local storage and add them to the gallery on page load
 const songs: Song[] = loadSongs();
 songs.forEach(addSong);
+updateAllReorderButtons();
 
 // Event listener to add a song to the gallery when the form is submitted - prevent default form submission, create a new song object with a unique id and the title from the input field, add it to the songs array, save to local storage, and add it to the gallery
 form?.addEventListener("submit", (e) => {
@@ -100,12 +132,23 @@ form?.addEventListener("submit", (e) => {
   };
 
   // Use .push to add the new song to the end of the songs array instead of unshift which adds it to the beginning:
-  // songs.push(newSong);
-  songs.unshift(newSong);
+  songs.push(newSong);
+
+  // Use .unshift to add the new song to the beginning of the songs array so it appears at the top of the gallery:
+  //  songs.unshift(newSong);
+
   saveSongs();
 
   addSong(newSong);
-  gallery.prepend(gallery.lastElementChild as HTMLDivElement);
+
+  // Use prepend to add the new card to the beginning of the gallery instead of the end:
+  // gallery.prepend(gallery.lastElementChild as HTMLDivElement);
+
+  gallery.lastElementChild?.scrollIntoView({
+    behavior: "smooth",
+    block: "end",
+  });
+  updateAllReorderButtons();
 
   // Reset form input values and remove 'is-invalid' class from all inputs:
   songInput.value = "";
@@ -159,6 +202,7 @@ function addSong(song: Song) {
   textArea.style.height = "40px";
   // textArea.style.resize = "none";
   textArea.style.fontSize = "1rem";
+  textArea.style.flexBasis = "100%";
 
   const innerWrapper = document.createElement("div");
   innerWrapper.classList.add("inner-wrapper");
@@ -168,6 +212,9 @@ function addSong(song: Song) {
 
   const metadataContainer = document.createElement("div");
   metadataContainer.classList.add("text-wrapper");
+
+  const actionsContainer = document.createElement("div");
+  actionsContainer.classList.add("actions-container");
 
   const rightArrow = document.createElement("i");
   // rightArrow.classList.add("bi", "bi-arrow-right");
@@ -187,14 +234,109 @@ function addSong(song: Song) {
   deleteButton.classList.add(
     "btn",
     "btn-outline-danger",
-    "btn-md",
-    "float-end",
+    "btn-sm",
+    // "float-end",
   );
   // deleteButton.textContent = "Delete";
   deleteButton.id = "delete-button-" + song.id;
   deleteButton.innerHTML = '<i class="bi bi-trash"></i>';
-  deleteButton.style.width = "40px";
-  deleteButton.style.height = "40px";
+  deleteButton.style.width = "32px";
+  deleteButton.style.height = "32px";
+
+  const editButton = document.createElement("button");
+  editButton.classList.add("btn", "btn-secondary", "btn-sm");
+  editButton.innerHTML = '<i class="bi bi-pencil"></i>';
+  editButton.style.width = "32px";
+  editButton.style.height = "32px";
+
+  // Event listener to open the edit modal with the song details passed in
+  editButton.addEventListener("click", () => {
+    editSongInput.value = song.title;
+    editArtistInput.value = song.artist;
+    editBPMInput.value = String(song.bpm);
+
+    const newSaveButton = saveChangesButton.cloneNode(
+      true,
+    ) as HTMLButtonElement;
+    saveChangesButton.replaceWith(newSaveButton);
+
+    // Helper function to update the song with new values and save them
+    function saveChangesHandler() {
+      song.title = editSongInput.value.trim();
+      song.artist = editArtistInput.value.trim();
+      song.bpm = parseInt(editBPMInput.value) || 0;
+
+      saveSongs();
+
+      title.textContent = song.title;
+      if (song.bpm) title.appendChild(BPM);
+      BPM.textContent = `${song.bpm} BPM`;
+      artist.textContent = song.artist;
+
+      editModal.hide();
+    }
+
+    // Event listener to update the values of the song object back to local storage
+    newSaveButton.addEventListener("click", saveChangesHandler);
+
+    const modalEl = document.getElementById("edit-song-modal") as HTMLElement;
+    function handleKeydown(e: KeyboardEvent) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        saveChangesHandler();
+        modalEl.removeEventListener("keydown", handleKeydown);
+      }
+    }
+    modalEl.addEventListener("keydown", handleKeydown);
+
+    editModal.show();
+  });
+
+  const reorderContainer = document.createElement("div");
+  reorderContainer.classList.add("reorder-container");
+
+  const upButton = document.createElement("button");
+  upButton.classList.add(
+    "btn",
+    "btn-outline-secondary",
+    "btn-sm",
+    "btn-reorder-up",
+  );
+  upButton.innerHTML = '<i class="bi bi-arrow-up"></i>';
+  upButton.style.width = "32px";
+  upButton.style.height = "32px";
+
+  const downButton = document.createElement("button");
+  downButton.classList.add(
+    "btn",
+    "btn-outline-secondary",
+    "btn-sm",
+    "btn-reorder-down",
+  );
+  downButton.innerHTML = '<i class="bi bi-arrow-down"></i>';
+  downButton.style.width = "32px";
+  downButton.style.height = "32px";
+
+  reorderContainer.append(upButton, downButton);
+  metadataContainer.append(reorderContainer);
+
+  upButton.addEventListener("click", () => {
+    const prev = card.previousElementSibling as HTMLDivElement | null;
+    if (prev) {
+      gallery.insertBefore(card, prev);
+      syncSongsWithDOM();
+      updateAllReorderButtons();
+    }
+  });
+
+  downButton.addEventListener("click", () => {
+    const next = card.nextElementSibling as HTMLDivElement | null;
+    if (next) {
+      gallery.insertBefore(next, card);
+      syncSongsWithDOM();
+      updateAllReorderButtons();
+    }
+  });
 
   if (song.cueIn) {
     cueInSelect.value = song.cueIn;
@@ -270,9 +412,14 @@ function addSong(song: Song) {
 
   metadataContainer.append(title, artist);
   cueContainer.append(cueInSelect, rightArrow, cueOutSelect);
-  innerWrapper.append(cueContainer, textArea, deleteButton);
-
-  galleryItem.append(metadataContainer, innerWrapper);
+  innerWrapper.append(cueContainer);
+  actionsContainer.append(editButton, reorderContainer, deleteButton);
+  galleryItem.append(
+    metadataContainer,
+    innerWrapper,
+    textArea,
+    actionsContainer,
+  );
   card.appendChild(galleryItem);
   gallery.appendChild(card);
   // Use prepend to add the new card to the beginning of the gallery instead of the end:
@@ -293,6 +440,7 @@ function syncSongsWithDOM() {
   // Add the reordered songs back to the songs array
   songs.push(...reordered);
   saveSongs();
+  updateAllReorderButtons();
 }
 
 // function removeListItem(id: string) {
@@ -316,6 +464,7 @@ function removeSong(id: string, card: HTMLDivElement) {
     songs.splice(index, 1);
     saveSongs();
     card.remove(); // Remove the card element from the DOM
+    updateAllReorderButtons();
   }
 }
 
@@ -384,14 +533,21 @@ function updateSelectColor(select: HTMLSelectElement) {
   if (select.value === "") {
     select.style.backgroundColor = "";
     select.style.color = "";
+    select.style.borderColor = "";
+    select.style.backgroundImage = "";
     return;
   }
+
+  // Find the matching option in CueOptions based on the selected value and update the select element's styles accordingly
   const match = (CueOptions as CueOption[]).find(
     (option) => option.name === select.value,
   );
+
   if (match) {
     select.style.backgroundColor = `#${match.color}`;
     select.style.color = "#fff";
+    select.style.borderColor = `#${match.color}`;
+    select.style.backgroundImage = `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c%2fsvg%3e")`;
   }
 }
 
