@@ -5,11 +5,11 @@ import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "./style.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
-//Song types:
 type Song = {
   id: string;
   title: string;
-  // completed?: boolean;
+  artist: string;
+  bpm: number;
   createdAt?: Date;
   cueIn?: string | null;
   cueOut?: string | null;
@@ -29,12 +29,41 @@ type DropDownOptions = {
 let draggedCard: HTMLDivElement | null = null;
 
 // Initialise DOM elements
-const gallery = document.getElementById("gallery") as HTMLDivElement;
 const form = document.getElementById("new-song-form") as HTMLFormElement | null;
-// const input = document.querySelector<HTMLInputElement>("#new-song-title");
-const searchInput = document.getElementById("search-input") as HTMLInputElement;
+const gallery = document.getElementById("gallery") as HTMLDivElement;
+const songInput = document.getElementById("song-input") as HTMLInputElement;
+const artistInput = document.getElementById("artist-input") as HTMLInputElement;
+const BPMInput = document.getElementById("BPM-input") as HTMLInputElement;
+const addSongButton = document.getElementById(
+  "add-song-button",
+) as HTMLButtonElement;
 
-// Initialise empty song array and load songs from local storage
+// Helper function to update the disabled state of the add song button based on whether all input fields have valid values
+function updateButtonState() {
+  addSongButton.disabled =
+    !songInput.value.trim() ||
+    !artistInput.value.trim() ||
+    !BPMInput.value.trim() ||
+    isNaN(Number(BPMInput.value));
+}
+
+// Event listeners to validate form input
+const songInputs = [songInput, artistInput, BPMInput];
+songInputs.forEach((input) => {
+  input.addEventListener("input", () => {
+    if (input === BPMInput) {
+      const isValid = input.value.trim() !== "" && !isNaN(Number(input.value));
+      input.classList.toggle("is-invalid", !isValid);
+    } else {
+      if (input.value.trim()) input.classList.remove("is-invalid");
+    }
+    updateButtonState();
+  });
+});
+
+updateButtonState();
+
+// Initialise empty song array and load songs from local storage and add them to the gallery on page load
 const songs: Song[] = loadSongs();
 songs.forEach(addSong);
 
@@ -42,16 +71,34 @@ songs.forEach(addSong);
 form?.addEventListener("submit", (e) => {
   e.preventDefault();
 
-  if (searchInput?.value == "" || searchInput?.value == null) return;
+  let validFormInput = true;
+  // Validate form input and add 'is-invalid' class to any empty fields, then return early if any fields are invalid:
+  if (!songInput.value.trim()) {
+    songInput.classList.add("is-invalid");
+    validFormInput = false;
+  }
+  if (!artistInput.value.trim()) {
+    artistInput.classList.add("is-invalid");
+    validFormInput = false;
+  }
+  if (!BPMInput.value.trim()) {
+    BPMInput.classList.add("is-invalid");
+    validFormInput = false;
+  }
+  if (!validFormInput) return;
+
+  if (songInput?.value == "" || songInput?.value == null) return;
 
   const newSong: Song = {
     id: uuidV4(),
-    title: searchInput.value,
-    // completed: false,
+    title: songInput.value,
+    artist: artistInput.value,
+    bpm: BPMInput.value ? parseInt(BPMInput.value) : 0,
     createdAt: new Date(),
     cueIn: null,
     cueOut: null,
   };
+
   // Use .push to add the new song to the end of the songs array instead of unshift which adds it to the beginning:
   // songs.push(newSong);
   songs.unshift(newSong);
@@ -59,18 +106,45 @@ form?.addEventListener("submit", (e) => {
 
   addSong(newSong);
   gallery.prepend(gallery.lastElementChild as HTMLDivElement);
-  searchInput.value = "";
+
+  // Reset form input values and remove 'is-invalid' class from all inputs:
+  songInput.value = "";
+  artistInput.value = "";
+  BPMInput.value = "";
+
+  songInputs.forEach((input) => input.classList.remove("is-invalid"));
+  updateButtonState();
 });
 
 // Add a song to the gallery - pass in a song object and create a card element with the song title and delete button, then append it to the gallery
 function addSong(song: Song) {
   const card = document.createElement("div");
   card.classList.add("card");
+
   const galleryItem = document.createElement("div");
   galleryItem.classList.add("gallery-item");
-  const title = document.createElement("p");
+
+  const title = document.createElement("h5");
   title.textContent = song.title;
-  // title.style.minWidth = "400px";
+  title.classList.add("mb-0");
+
+  const artist = document.createElement("p");
+  artist.textContent = song.artist || "";
+  artist.classList.add("mb-0", "text-muted", "small");
+
+  const BPM = document.createElement("span");
+  BPM.textContent = song.bpm ? `${song.bpm} BPM` : "";
+  // BPM.classList.add("badge", "text-bg-secondary", "mw-2");
+  BPM.classList.add(
+    "badge",
+    "rounded-pill",
+    "text-bg-secondary",
+    "ms-2",
+    "fw-bold",
+  );
+  BPM.style.fontSize = "14px";
+  if (song.bpm) title.appendChild(BPM);
+
   card.dataset.id = song.id; // Store the song id in a data attribute on the card element for easy access when deleting
   card.draggable = true;
 
@@ -86,8 +160,14 @@ function addSong(song: Song) {
   // textArea.style.resize = "none";
   textArea.style.fontSize = "1rem";
 
+  const innerWrapper = document.createElement("div");
+  innerWrapper.classList.add("inner-wrapper");
+
   const cueContainer = document.createElement("div");
   cueContainer.classList.add("cue-container");
+
+  const metadataContainer = document.createElement("div");
+  metadataContainer.classList.add("text-wrapper");
 
   const rightArrow = document.createElement("i");
   // rightArrow.classList.add("bi", "bi-arrow-right");
@@ -104,12 +184,17 @@ function addSong(song: Song) {
   // const item = document.createElement("div");
   // const label = document.createElement("label");
   const deleteButton = document.createElement("button");
-  deleteButton.classList.add("btn", "btn-danger", "btn-sm", "float-end");
+  deleteButton.classList.add(
+    "btn",
+    "btn-outline-danger",
+    "btn-md",
+    "float-end",
+  );
   // deleteButton.textContent = "Delete";
   deleteButton.id = "delete-button-" + song.id;
   deleteButton.innerHTML = '<i class="bi bi-trash"></i>';
-  deleteButton.style.width = "32px";
-  deleteButton.style.height = "32px";
+  deleteButton.style.width = "40px";
+  deleteButton.style.height = "40px";
 
   if (song.cueIn) {
     cueInSelect.value = song.cueIn;
@@ -183,29 +268,29 @@ function addSong(song: Song) {
     syncSongsWithDOM();
   });
 
+  metadataContainer.append(title, artist);
   cueContainer.append(cueInSelect, rightArrow, cueOutSelect);
+  innerWrapper.append(cueContainer, textArea, deleteButton);
 
-  galleryItem.append(
-    title,
-    cueContainer,
-    textArea,
-    deleteButton,
-    // cueOutSelect,
-    // textArea,
-    // deleteButton,
-  );
+  galleryItem.append(metadataContainer, innerWrapper);
   card.appendChild(galleryItem);
   gallery.appendChild(card);
   // Use prepend to add the new card to the beginning of the gallery instead of the end:
   // gallery.prepend(card);
 }
 
+// Helper function to sync the order of songs in the songs array with the order of the cards in the DOM after a drag-and-drop reordering
 function syncSongsWithDOM() {
+  // Create an array from the DOM gallery
   const cards = Array.from(gallery.children) as HTMLDivElement[];
   const reordered = cards
-    .map((c) => songs.find((s) => s.id === c.dataset.id))
-    .filter((s): s is Song => s !== undefined);
+    // For each card, find the corresponding song in the songs array using the data-id attribute and return an array of songs in the new order
+    .map((card) => songs.find((song) => song.id === card.dataset.id))
+    // Filter out any undefined values (in case a card doesn't have a corresponding song for some reason) and assert that the resulting array is of type Song[]
+    .filter((song): song is Song => song !== undefined);
+  // Reset the songs array
   songs.length = 0;
+  // Add the reordered songs back to the songs array
   songs.push(...reordered);
   saveSongs();
 }
@@ -265,14 +350,12 @@ function createDropdownOptions(): DropDownOptions {
   const cueInPlaceholderText = document.createElement("option");
   cueInPlaceholderText.value = "";
   cueInPlaceholderText.textContent = "IN";
-  // cueInPlaceholderText.disabled = true;
   cueInPlaceholderText.selected = true;
   cueInSelect.appendChild(cueInPlaceholderText);
 
   const cueOutPlaceholderText = document.createElement("option");
   cueOutPlaceholderText.value = "";
   cueOutPlaceholderText.textContent = "OUT";
-  // cueOutPlaceholderText.disabled = true;
   cueOutPlaceholderText.selected = true;
   cueOutSelect.appendChild(cueOutPlaceholderText);
 

@@ -24,7 +24,7 @@ body {
   /* place-items: center; */
   min-width: 320px;
   min-height: 100vh;
-  padding: 4rem;
+  padding: 2.5rem;
 }
 
 h1 {
@@ -42,21 +42,24 @@ p {
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
-  min-width: 340px;
-  max-width: 400px;
+  min-width: 400px;
+  /* max-width: 400px; */
+  /* flex-shrink: 1; */
 }
 
 .btn-primary {
   /* background-color: #747bff;
   border-color: #747bff; */
   width: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .form-control {
   /* background-color: #f9f9f9;
   border: 1px solid #ccc;
   border-radius: 4px; */
-  max-width: 400px;
+  max-width: 300px;
 }
 
 #app {
@@ -76,6 +79,12 @@ p {
   gap: 0.5rem;
 }
 
+.text-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .search-wrapper {
   display: flex;
   flex-direction: row;
@@ -90,9 +99,17 @@ p {
   flex-wrap: wrap;
   align-items: stretch;
   max-width: 1280px;
-  gap: 2rem;
+  gap: 1.5rem;
   width: 100%;
   /* flex: 0 1 360px; */
+  flex-grow: 1;
+}
+
+.inner-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2rem;
   flex-grow: 1;
 }
 
@@ -100,26 +117,50 @@ p {
   display: flex;
   flex-direction: row;
   align-items: center;
-  align-content: center;
+  flex-wrap: wrap;
   justify-content: flex-start;
-  gap: 2rem;
+  gap: 1rem;
   width: 100%;
   padding: 1rem;
   cursor: grab;
 }
 
 .gallery-item:hover {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  align-content: center;
-  justify-content: flex-start;
-  gap: 2rem;
-  width: 100%;
-  padding: 1rem;
   cursor: grab;
-  background-color: aliceblue;
+  background-color: #f6f6f6;
   border-radius: 5px;
+}
+
+.inner-wrapper textarea {
+  flex: 1;
+  min-width: 0;
+}
+
+.gallery-item .btn-outline-danger {
+  opacity: 0;
+  max-width: 0;
+  overflow: hidden;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  border-left-width: 0 !important;
+  border-right-width: 0 !important;
+  margin-left: -2rem;
+  flex-shrink: 0;
+  /* transition:
+    opacity 0.2s ease,
+    max-width 0.2s ease; */
+  /* padding 0.2s ease, */
+  /* border-width 0.2s ease; */
+}
+
+.gallery-item:hover .btn-outline-danger {
+  opacity: 1;
+  max-width: 40px;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  border-left-width: 1px !important;
+  border-right-width: 1px !important;
+  margin-left: 0;
 }
 
 .dragging {
