@@ -100,6 +100,27 @@ songInputs.forEach((input) => {
 
 updateButtonState();
 
+const cueOptionsModified = [
+  ...CueOptions,
+  { name: "Next song", color: "FF1DCE" },
+];
+
+// Helper function to update the border colour of selected value for effect start and end points
+// function updateEffectPointColor(select: HTMLSelectElement) {
+//   const match = (CueOptions as CueOption[]).find(
+//     (option) => option.name === select.value,
+//   );
+//   select.style.borderColor = match?.color ? `#${match.color}` : "";
+// }
+function updateEffectPointColor(select: HTMLSelectElement) {
+  const match = cueOptionsModified.find(
+    (option) => option.name === select.value,
+  );
+  const color = match?.color ? `#${match.color}` : "";
+  select.style.borderColor = color;
+  select.style.color = color;
+}
+
 // Initialise empty song array and load songs from local storage and add them to the gallery on page load
 const songs: Song[] = loadSongs();
 songs.forEach(addSong);
@@ -374,9 +395,21 @@ function addSong(song: Song) {
     updateSelectColor(cueOutSelect);
   }
 
-  if (song.effectStart) effectStartSelect.value = song.effectStart;
-  if (song.effectEnd) effectEndSelect.value = song.effectEnd;
-  if (song.effectType) effectTypeSelect.value = song.effectType;
+  if (song.effectStart) {
+    effectStartSelect.value = song.effectStart;
+    updateEffectPointColor(effectStartSelect);
+  }
+
+  if (song.effectEnd) {
+    effectEndSelect.value = song.effectEnd;
+    updateEffectPointColor(effectEndSelect);
+  }
+
+  if (song.effectType) {
+    effectTypeSelect.value = song.effectType;
+    effectTypeSelect.style.borderColor = "#FF1DCE";
+    effectTypeSelect.style.color = "#FF1DCE";
+  }
 
   cueInSelect.addEventListener("change", () => {
     song.cueIn = cueInSelect.value;
@@ -393,16 +426,22 @@ function addSong(song: Song) {
   effectStartSelect.addEventListener("change", () => {
     song.effectStart = effectStartSelect.value;
     saveSongs();
+    updateEffectPointColor(effectStartSelect);
   });
 
   effectEndSelect.addEventListener("change", () => {
     song.effectEnd = effectEndSelect.value;
     saveSongs();
+    updateEffectPointColor(effectEndSelect);
   });
 
   effectTypeSelect.addEventListener("change", () => {
     song.effectType = effectTypeSelect.value;
     saveSongs();
+    effectTypeSelect.style.borderColor = effectTypeSelect.value
+      ? "#FF1DCE"
+      : "";
+    effectTypeSelect.style.color = effectTypeSelect.value ? "#FF1DCE" : "";
   });
 
   deleteButton.addEventListener("click", () => removeSong(song.id, card));
@@ -555,14 +594,14 @@ function loadSongs(): Song[] {
 function createDropdownOptions(): DropDownOptions {
   const cueInSelect = document.createElement("select");
   cueInSelect.style.width = "80px";
-  cueInSelect.style.maxWidth = "104px";
+  cueInSelect.style.maxWidth = "120px";
   cueInSelect.classList.add("form-select", "form-select-md");
   cueInSelect.style.fontWeight = "bold";
   cueInSelect.style.height = "40px";
 
   const cueOutSelect = document.createElement("select");
   cueOutSelect.style.width = "80px";
-  cueOutSelect.style.maxWidth = "104px";
+  cueOutSelect.style.maxWidth = "120px";
   cueOutSelect.classList.add("form-select", "form-select-md");
   cueOutSelect.style.fontWeight = "bold";
   cueOutSelect.style.height = "40px";
@@ -580,16 +619,16 @@ function createDropdownOptions(): DropDownOptions {
   cueOutSelect.appendChild(cueOutPlaceholderText);
 
   const effectStart = document.createElement("select");
-  effectStart.classList.add("form-select", "form-select-md");
+  effectStart.classList.add("form-select", "form-select-sm");
   effectStart.style.width = "120px";
   effectStart.style.fontWeight = "bold";
-  effectStart.style.height = "40px";
+  effectStart.style.height = "32px";
 
   const effectEnd = document.createElement("select");
-  effectEnd.classList.add("form-select", "form-select-md");
+  effectEnd.classList.add("form-select", "form-select-sm");
   effectEnd.style.width = "120px";
   effectEnd.style.fontWeight = "bold";
-  effectEnd.style.height = "40px";
+  effectEnd.style.height = "32px";
 
   const effectStartPlaceholderText = document.createElement("option");
   effectStartPlaceholderText.value = "";
@@ -604,10 +643,10 @@ function createDropdownOptions(): DropDownOptions {
   effectEnd.appendChild(effectEndPlaceholderText);
 
   const effectType = document.createElement("select");
-  effectType.classList.add("form-select", "form-select-md");
+  effectType.classList.add("form-select", "form-select-sm");
   effectType.style.width = "160px";
   effectType.style.fontWeight = "bold";
-  effectType.style.height = "40px";
+  effectType.style.height = "32px";
 
   // Iterate over each option and create an option element for both cue in and cue out selects
   CueOptions.forEach((option: CueOption) => {
@@ -632,20 +671,33 @@ function createDropdownOptions(): DropDownOptions {
   });
 
   // Iterate over each options and add custom ones for effects
-  const cueOptionsModified = [...CueOptions, { name: "Transition" }];
   cueOptionsModified.forEach((option: CueOption) => {
     const effectOptStart = document.createElement("option");
     effectOptStart.value = option.name;
     effectOptStart.textContent = option.name;
+    if (option.color) {
+      effectOptStart.style.backgroundColor = `#${option.color}`;
+    }
     effectStart.appendChild(effectOptStart);
 
     const effectOptEnd = document.createElement("option");
     effectOptEnd.value = option.name;
     effectOptEnd.textContent = option.name;
+    if (option.color) {
+      effectOptEnd.style.backgroundColor = `#${option.color}`;
+    }
     effectEnd.appendChild(effectOptEnd);
   });
 
-  const effectTypes = ["Transition", "Skip to", "Vocals only", "Remove vocals"];
+  const effectTypes = [
+    "Transition",
+    "Cue next song",
+    "Skip to",
+    "Filter out",
+    "Loop out to",
+    "Vocals only",
+    "Remove vocals",
+  ];
   effectTypes.forEach((type) => {
     const opt = document.createElement("option");
     opt.value = type;
