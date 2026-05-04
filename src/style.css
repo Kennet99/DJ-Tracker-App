@@ -149,7 +149,7 @@ p {
 
 .gallery-item:hover {
   cursor: grab;
-  background-color: #f6f6f6;
+  background-color: #fafafa;
   border-radius: 5px;
 }
 

@@ -35,14 +35,22 @@ type DropDownOptions = {
 
 let draggedCard: HTMLDivElement | null = null;
 
+console.log("SONGS:", loadSongs());
+
 // Initialise DOM elements
 const form = document.getElementById("new-song-form") as HTMLFormElement | null;
 const gallery = document.getElementById("gallery") as HTMLDivElement;
 const songInput = document.getElementById("song-input") as HTMLInputElement;
 const artistInput = document.getElementById("artist-input") as HTMLInputElement;
 const BPMInput = document.getElementById("BPM-input") as HTMLInputElement;
-const addSongButton = document.getElementById(
-  "add-song-button",
+// const addSongButton = document.getElementById(
+//   "add-song-button",
+// ) as HTMLButtonElement;
+const addSongTopButton = document.getElementById(
+  "add-song-top-button",
+) as HTMLButtonElement;
+const addSongBottomButton = document.getElementById(
+  "add-song-bottom-button",
 ) as HTMLButtonElement;
 const editModal = new bootstrap.Modal(
   document.getElementById("edit-song-modal") as HTMLElement,
@@ -77,11 +85,14 @@ function updateAllReorderButtons() {
 
 // Helper function to update the disabled state of the add song button based on whether all input fields have valid values
 function updateButtonState() {
-  addSongButton.disabled =
-    !songInput.value.trim() ||
-    !artistInput.value.trim() ||
-    !BPMInput.value.trim() ||
-    isNaN(Number(BPMInput.value));
+  const isValid =
+    !!songInput.value.trim() &&
+    !!artistInput.value.trim() &&
+    !!BPMInput.value.trim() &&
+    !isNaN(Number(BPMInput.value));
+  addSongTopButton.disabled = !isValid;
+  addSongBottomButton.disabled = !isValid;
+  return isValid;
 }
 
 // Event listeners to validate form input
@@ -121,13 +132,62 @@ function updateEffectPointColor(select: HTMLSelectElement) {
   select.style.color = color;
 }
 
+function createNewSong(): Song {
+  return {
+    id: uuidV4(),
+    title: songInput.value,
+    artist: artistInput.value,
+    bpm: BPMInput.value ? parseInt(BPMInput.value) : 0,
+    createdAt: new Date(),
+    cueIn: null,
+    cueOut: null,
+  };
+}
+
+function resetForm() {
+  songInput.value = "";
+  artistInput.value = "";
+  BPMInput.value = "";
+  songInputs.forEach((input) => input.classList.remove("is-invalid"));
+  updateButtonState();
+}
+
+// Add to TOP
+addSongTopButton.addEventListener("click", () => {
+  const newSong = createNewSong();
+  songs.unshift(newSong);
+  saveSongs();
+  addSong(newSong);
+  gallery.prepend(gallery.lastElementChild as HTMLDivElement);
+  gallery.firstElementChild?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+  updateAllReorderButtons();
+  resetForm();
+});
+
+// Add to BOTTOM
+addSongBottomButton.addEventListener("click", () => {
+  const newSong = createNewSong();
+  songs.push(newSong);
+  saveSongs();
+  addSong(newSong);
+  gallery.lastElementChild?.scrollIntoView({
+    behavior: "smooth",
+    block: "end",
+  });
+  updateAllReorderButtons();
+  resetForm();
+});
+
 // Initialise empty song array and load songs from local storage and add them to the gallery on page load
 const songs: Song[] = loadSongs();
 songs.forEach(addSong);
 updateAllReorderButtons();
 
 // Event listener to add a song to the gallery when the form is submitted - prevent default form submission, create a new song object with a unique id and the title from the input field, add it to the songs array, save to local storage, and add it to the gallery
-form?.addEventListener("submit", (e) => {
+/*form?.addEventListener("submit", (e) => {
   e.preventDefault();
 
   let validFormInput = true;
@@ -158,14 +218,15 @@ form?.addEventListener("submit", (e) => {
     cueOut: null,
   };
 
+  // CONTROL GALLERY ORDERING:
   // Use .push to add the new song to the end of the songs array instead of unshift which adds it to the beginning:
   songs.push(newSong);
 
   // Use .unshift to add the new song to the beginning of the songs array so it appears at the top of the gallery:
-  //  songs.unshift(newSong);
+  // songs.unshift(newSong);
 
   saveSongs();
-  addSong(newSong);
+  // addSong(newSong);
 
   // Use prepend to add the new card to the beginning of the gallery instead of the end:
   // gallery.prepend(gallery.lastElementChild as HTMLDivElement);
@@ -183,7 +244,7 @@ form?.addEventListener("submit", (e) => {
 
   songInputs.forEach((input) => input.classList.remove("is-invalid"));
   updateButtonState();
-});
+});*/
 
 // Add a song to the gallery - pass in a song object and create a card element with the song title and delete button, then append it to the gallery
 function addSong(song: Song) {
@@ -530,7 +591,9 @@ function addSong(song: Song) {
     bottomRow,
     actionsContainer,
   );
+
   card.appendChild(galleryItem);
+
   gallery.appendChild(card);
   // Use prepend to add the new card to the beginning of the gallery instead of the end:
   // gallery.prepend(card);
@@ -647,6 +710,12 @@ function createDropdownOptions(): DropDownOptions {
   effectType.style.width = "160px";
   effectType.style.fontWeight = "bold";
   effectType.style.height = "32px";
+
+  // const effectTypePlaceholder = document.createElement("option");
+  // effectTypePlaceholder.value = "";
+  // effectTypePlaceholder.textContent = "EFFECT";
+  // effectTypePlaceholder.selected = true;
+  // effectType.appendChild(effectTypePlaceholder);
 
   // Iterate over each option and create an option element for both cue in and cue out selects
   CueOptions.forEach((option: CueOption) => {
